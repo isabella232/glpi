@@ -223,7 +223,9 @@ class DBmysql {
       if ($result && ($result->data_seek($i))
           && ($data = $result->fetch_array())
           && isset($data[$field])) {
-         return $data[$field];
+         return (Toolbox::get_magic_quotes_runtime()
+                    ? Toolbox::stripslashes_deep($data[$field])
+                    : $data[$field]);
       }
       return NULL;
    }
@@ -251,7 +253,9 @@ class DBmysql {
    **/
    function fetch_array($result) {
 
-      return $result->fetch_array();
+      return (Toolbox::get_magic_quotes_runtime()
+                  ? Toolbox::stripslashes_deep($result->fetch_array())
+                  : $result->fetch_array());
    }
 
 
@@ -264,7 +268,9 @@ class DBmysql {
    **/
    function fetch_row($result) {
 
-      return $result->fetch_row();
+      return (Toolbox::get_magic_quotes_runtime()
+                  ? Toolbox::stripslashes_deep($result->fetch_row())
+                  : $result->fetch_row());
    }
 
 
@@ -277,7 +283,9 @@ class DBmysql {
    **/
    function fetch_assoc($result) {
 
-      return $result->fetch_assoc();
+      return (Toolbox::get_magic_quotes_runtime()
+                  ? Toolbox::stripslashes_deep($result->fetch_assoc())
+                  : $result->fetch_assoc());
    }
 
 
@@ -478,7 +486,11 @@ class DBmysql {
              && (substr(rtrim($formattedQuery),-4) != "&gt;")
              && (substr(rtrim($formattedQuery),-4) != "160;")) {
 
-            $formattedQuerytorun = $formattedQuery;
+            if (Toolbox::get_magic_quotes_runtime()) {
+               $formattedQuerytorun = stripslashes($formattedQuery);
+            } else {
+               $formattedQuerytorun = $formattedQuery;
+            }
 
             // Do not use the $DB->query
             if ($this->query($formattedQuerytorun)) { //if no success continue to concatenate

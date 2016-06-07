@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -54,20 +54,23 @@ class Computer_SoftwareLicense extends CommonDBRelation {
     * @see CommonDBRelation::post_addItem()
    **/
    function post_addItem() {
-
+	 global $DB;
+   
       SoftwareLicense::updateValidityIndicator($this->fields['softwarelicenses_id']);
+	  Computer_SoftwareVersion::updateValidityIndicator($this->fields['id'],$this->fields['computers_id'],$this->fields['softwarelicenses_id']);
 
       parent::post_addItem();
    }
 
 
    function post_deleteFromDB() {
+	 global $DB;
 
       SoftwareLicense::updateValidityIndicator($this->fields['softwarelicenses_id']);
+	  Computer_SoftwareVersion::updateValidityIndicator($this->fields['id'],$this->fields['computers_id'],$this->fields['softwarelicenses_id']);
 
       parent::post_deleteFromDB();
    }
-
 
    /**
     * Get search function for the class
@@ -658,16 +661,15 @@ class Computer_SoftwareLicense extends CommonDBRelation {
    **/
   function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
-     $nb = 0;
       switch ($item->getType()) {
          case 'SoftwareLicense' :
             if (!$withtemplate) {
+               $nb = 0;
                if ($_SESSION['glpishow_count_on_tabs']) {
                   $nb = self::countForLicense($item->getID());
                }
                return array(1 => __('Summary'),
-                            2 => self::createTabEntry(Computer::getTypeName(Session::getPluralNumber()),
-                                                      $nb));
+                            2 => self::createTabEntry(Computer::getTypeName(Session::getPluralNumber()), $nb));
             }
             break;
       }

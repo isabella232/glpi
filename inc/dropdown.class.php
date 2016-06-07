@@ -744,6 +744,7 @@ class Dropdown {
                                  'PeripheralType'       => _n('Devices type', 'Devices types', Session::getPluralNumber()),
                                  'PhoneType'            => _n('Phone type', 'Phones types', Session::getPluralNumber()),
                                  'SoftwareLicenseType'  => _n('License type', 'License types', Session::getPluralNumber()),
+								 'SoftwareLicenseMetric'  => _n('Metric type', 'Metric types', Session::getPluralNumber()),
                                  'CartridgeItemType'    => _n('Cartridge type',
                                                               'Cartridge types', Session::getPluralNumber()),
                                  'ConsumableItemType'   => _n('Consumable type',

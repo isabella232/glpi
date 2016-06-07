@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -221,14 +221,15 @@ class Netpoint extends CommonDropdown {
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
       if (!$withtemplate) {
-         $nb = 0;
          switch ($item->getType()) {
             case 'Location' :
                if ($_SESSION['glpishow_count_on_tabs']) {
-                  $nb =  countElementsInTable($this->getTable(),
-                                              "locations_id = '".$item->getID()."'");
+                  return self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
+                                              countElementsInTable($this->getTable(),
+                                                                   "locations_id
+                                                                        = '".$item->getID()."'"));
                }
-               return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb);
+               return self::getTypeName(Session::getPluralNumber());
          }
       }
       return '';

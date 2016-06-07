@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -28,6 +28,8 @@
 
  You should have received a copy of the GNU General Public License
  along with GLPI. If not, see <http://www.gnu.org/licenses/>.
+ 
+ Author : DELMAS Rémi
  --------------------------------------------------------------------------
  */
 
@@ -57,6 +59,52 @@ class ComputerVirtualMachine extends CommonDBChild {
    }
 
 
+	function defineTabs($options=array()) {
+      $ong = array();
+      $this->addDefaultFormTab($ong);
+      $this->addStandardTab('Computer_SoftwareVersion', $ong, $options);
+	  $this->addStandardTab('Log',$ong, $options);
+	  
+      return $ong;
+	}
+	
+	function post_restoreItem() {
+	  $comp_softvers = new Computer_SoftwareVersion();
+      $comp_softvers->updateDatasForComputer($this->fields['computers_id']);
+   }
+
+
+   function post_deleteItem() {
+
+      $comp_softvers = new Computer_SoftwareVersion();
+      $comp_softvers->updateDatasForComputer($this->fields['computers_id']);
+   }
+   
+      /**
+    * @see CommonDBTM::prepareInputForAdd()
+   **/
+   function prepareInputForAdd($input) {
+
+      if (isset($input["id"]) && ($input["id"] > 0)) {
+         $input["_oldID"] = $input["id"];
+      }
+      unset($input['id']);
+      unset($input['withtemplate']);
+
+      return $input;
+   }
+   
+    function post_addItem() {
+      global $DB;
+
+      // Manage add from template
+      if (isset($this->input["_oldID"])) {
+         // ADD software
+         Computer_SoftwareVersion::cloneComputer($this->input["_oldID"], $this->fields['id']);
+         Computer_SoftwareLicense::cloneComputer($this->input["_oldID"], $this->fields['id']);
+      }
+   }
+   
    /**
     * @see CommonGLPI::getTabNameForItem()
    **/
@@ -65,30 +113,17 @@ class ComputerVirtualMachine extends CommonDBChild {
       if (!$withtemplate
           && ($item->getType() == 'Computer')
           && Computer::canView()) {
-         $nb = 0;
+
          if ($_SESSION['glpishow_count_on_tabs']) {
-            $nb = countElementsInTable('glpi_computervirtualmachines',
-                                       "computers_id = '".$item->getID()."' AND `is_deleted`='0'");
+            return self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
+                                        countElementsInTable('glpi_computervirtualmachines',
+                                                             "computers_id = '".$item->getID()."'
+                                                                 AND `is_deleted`='0'"));
          }
-         return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb);
+         return self::getTypeName(Session::getPluralNumber());
       }
       return '';
    }
-
-
-   /**
-    * @see CommonGLPI::defineTabs()
-    *
-    * @since version 0.85
-   **/
-   function defineTabs($options=array()) {
-
-      $ong = array();
-      $this->addDefaultFormTab($ong);
-
-      return $ong;
-   }
-
 
    /**
     * @param $item         CommonGLPI object

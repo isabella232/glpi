@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -1070,13 +1070,12 @@ class NetworkPort extends CommonDBChild {
       global $CFG_GLPI;
 
       // Can exists on template
-      $nb = 0;
       if (NetworkEquipment::canView()) {
          if (in_array($item->getType(), $CFG_GLPI["networkport_types"])) {
             if ($_SESSION['glpishow_count_on_tabs']) {
-               $nb = self::countForItem($item);
+               return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), self::countForItem($item));
             }
-            return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb);
+            return (self::getTypeName(Session::getPluralNumber()));
          }
       }
 

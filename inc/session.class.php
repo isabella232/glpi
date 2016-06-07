@@ -187,7 +187,6 @@ class Session {
    static function start() {
 
       if (!session_id()) {
-         session_name("glpi_".md5(realpath(GLPI_ROOT)));
          @session_start();
       }
       // Define current time for sync of action timing

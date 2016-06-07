@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -98,7 +98,94 @@ class Computer_SoftwareVersion extends CommonDBRelation {
       return parent::prepareInputForUpdate($input);
    }
 
+	 /**
+    * Compute licence validity indicator.
+    *
+    * @param $computer_ID        ID of the computer
+	* @param $license_ID		 ID of the license
+    *
+    * @author DELMAS Rémi
+    * 
+    * @return validity indicator
+   **/
+   static function computeValidityIndicator($computer_ID, $license_ID) {
+		 global $DB;
+   
+		 $query = "SELECT DISTINCT Oracle, IBM, Nb_licenses, ConstructorName, MetricName, ComputerSoftVersionID, Valid
+				   FROM (SELECT `items_id` as Computer_id,SUM(`core_factor` * `nbthreads`) as Oracle, SUM(`pvu` * `nbthreads`) as IBM
+						 FROM `glpi_items_deviceprocessors`, `glpi_deviceprocessors`
+						 WHERE `items_id` = '$computer_ID'
+						 AND `glpi_items_deviceprocessors`.`deviceprocessors_id` = `glpi_deviceprocessors`.`id`
+						 GROUP BY `items_id`) as Calculate, 
+	  
+						(SELECT `computers_id`,`softwarelicenses_id`, count(`softwarelicenses_id`) as Nb_licenses
+						 FROM `glpi_computers_softwarelicenses`
+						 WHERE `softwarelicenses_id`='$license_ID'
+						 GROUP BY `softwarelicenses_id`) as CountLicenses,
 
+						(SELECT `glpi_softwarelicenses`.`id` as ID, `glpi_softwarelicensemetrics`.`name` as MetricName
+						 FROM `glpi_softwarelicenses`, `glpi_softwarelicensemetrics`
+						 WHERE `glpi_softwarelicenses`.`softwarelicensemetrics_id`=`glpi_softwarelicensemetrics`.`id`)as LicenceName,
+										 
+						(SELECT `glpi_softwarelicenses`.`id` as ID, `glpi_manufacturers`.`name` as ConstructorName
+						 FROM `glpi_softwarelicenses`, `glpi_softwares`, `glpi_manufacturers`
+						 WHERE `glpi_softwarelicenses`.`softwares_id`=`glpi_softwares`.`id`
+						 AND `glpi_softwares`.`manufacturers_id`=`glpi_manufacturers`.`id`) as Manufacturer,
+
+						(SELECT  `glpi_softwarelicenses`.`id` as LicenceID,`glpi_softwareversions`.`id` as LicToVersion,`glpi_computers_softwareversions`.`id` as ComputerSoftVersionID,`glpi_computers_softwareversions`.`is_valid` as Valid
+						 FROM `glpi_softwareversions`,`glpi_softwarelicenses`, `glpi_computers_softwareversions` 
+						 WHERE `glpi_softwarelicenses`.`id`='$license_ID' 
+						 AND `glpi_softwareversions`.`softwares_id`= `glpi_softwarelicenses`.`softwares_id`
+						 AND `glpi_softwareversions`.`softwares_id`= `glpi_computers_softwareversions`.`softwareversions_id`) as LicToVersion,
+	  
+						 `glpi_computers_softwareversions`
+ 
+					WHERE Calculate.`computer_id`=CountLicenses.`computers_id` 
+					AND CountLicenses.`softwarelicenses_id`=LicenceName.ID
+					AND Manufacturer.ID = CountLicenses.`softwarelicenses_id`
+					AND `glpi_computers_softwareversions`.`id`=LicToVersion.ComputerSoftVersionID";
+		 if($result = $DB->query($query)){
+			 if ($data = $result->fetch_assoc()) {
+				 $metricname = strtoupper($data['MetricName']);
+				 if($metricname = "PROCESSOR"){
+					 $softwareVersionID = $data['ComputerSoftVersionID'];
+					 $cname = strtoupper($data['ConstructorName']);
+					 if($cname=='ORACLE'){
+						 $isChangement =(($data['Oracle']<=$data['Nb_licenses'])?1:0)==$data['Valid'];
+						 return array($isChangement,$softwareVersionID);
+					 }
+					 elseif($cname=='IBM')
+					 {
+						 $isChangement =(($data['IBM']<=$data['Nb_licenses'])?1:0)==$data['Valid'];
+						 return array($isChangement,$softwareVersionID);
+					 }
+				 }
+			 }
+		 }
+		 // Error -> No change, default value to 1 into DB
+		 return array(-1,-1);
+	}
+	
+   /**
+    * Update validity indicator of a specific license
+    * @param $ID ID of the licence
+    *
+    * @author DELMAS Rémi
+    *
+    * @return nothing
+   **/
+   static function updateValidityIndicator($ID,$computer_ID,$lic_ID) {
+	 $computer_softwareversion = new self();
+	 $valid = self::computeValidityIndicator($computer_ID,$lic_ID);
+	 #if change of validityIndicator value
+     if ($computer_softwareversion->getFromDB($valid[1]) && !($valid[0])) 
+	 {    
+		$newValid = ($computer_softwareversion->fields['is_valid']+1)%2;
+		$computer_softwareversion->update(array('id' => $valid[1],
+												'is_valid' => $newValid));
+     }
+    }
+   
    /**
     * @since version 0.85
     *
@@ -197,6 +284,7 @@ class Computer_SoftwareVersion extends CommonDBRelation {
    }
 
 
+   
    /**
     * @param $computers_id
    **/
@@ -687,6 +775,8 @@ class Computer_SoftwareVersion extends CommonDBRelation {
       if (Plugin::haveImport()) {
          $add_dynamic = "`glpi_computers_softwareversions`.`is_dynamic`,";
       }
+	  
+	  // Modification de la requete pour select également glpi_softwareversions.is_valid
 
       $query = "SELECT `glpi_softwares`.`softwarecategories_id`,
                        `glpi_softwares`.`name` AS softname,
@@ -696,7 +786,8 @@ class Computer_SoftwareVersion extends CommonDBRelation {
                        `glpi_softwareversions`.`id` AS verid,
                        `glpi_softwareversions`.`softwares_id`,
                        `glpi_softwareversions`.`name` AS version,
-                       `glpi_softwares`.`is_valid` AS softvalid
+                       `glpi_softwares`.`is_valid` AS softvalid,
+					   `glpi_computers_softwareversions`.`is_valid` AS metricvalid
                 FROM `glpi_computers_softwareversions`
                 LEFT JOIN `glpi_softwareversions`
                      ON (`glpi_computers_softwareversions`.`softwareversions_id`
@@ -800,9 +891,11 @@ class Computer_SoftwareVersion extends CommonDBRelation {
          }
          $header_end .= "<th>".SoftwareCategory::getTypeName(1)."</th>";
          $header_end .= "<th>".__('Valid license')."</th>";
+		 $header_end .= "<th>".__('Metric license')."</th>";
          $header_end .= "</tr>\n";
          echo $header_begin.$header_top.$header_end;
 
+		//Affichage des résultats de la requete -> corp du tableau de l'onglet software
          for ($row=0 ; $data=$DB->fetch_assoc($result) ; $row++) {
 
             if (($row >= $start) && ($row < ($start + $_SESSION['glpilist_limit']))) {
@@ -848,7 +941,284 @@ class Computer_SoftwareVersion extends CommonDBRelation {
          Html::closeForm();
       }
       echo "<div class='spaced'>";
-      // Affected licenses NOT installed
+      // Affected licenses NOT installed -> LOOK AT THIS
+      $query = "SELECT `glpi_softwarelicenses`.*,
+                       `glpi_computers_softwarelicenses`.`id` AS linkID,
+                       `glpi_softwares`.`name` AS softname,
+                       `glpi_softwareversions`.`name` AS version,
+                       `glpi_states`.`name` AS state
+                FROM `glpi_softwarelicenses`
+                LEFT JOIN `glpi_computers_softwarelicenses`
+                      ON (`glpi_computers_softwarelicenses`.softwarelicenses_id
+                              = `glpi_softwarelicenses`.`id`)
+                INNER JOIN `glpi_softwares`
+                      ON (`glpi_softwarelicenses`.`softwares_id` = `glpi_softwares`.`id`)
+                LEFT JOIN `glpi_softwareversions`
+                      ON (`glpi_softwarelicenses`.`softwareversions_id_use`
+                              = `glpi_softwareversions`.`id`
+                           OR (`glpi_softwarelicenses`.`softwareversions_id_use` = '0'
+                               AND `glpi_softwarelicenses`.`softwareversions_id_buy`
+                                       = `glpi_softwareversions`.`id`))
+                LEFT JOIN `glpi_states`
+                     ON (`glpi_states`.`id` = `glpi_softwareversions`.`states_id`)
+                WHERE `glpi_computers_softwarelicenses`.`computers_id` = '$computers_id'
+                      AND `glpi_computers_softwarelicenses`.`is_deleted` = '0'
+                      $where";
+
+      if (count($installed)) {
+         $query .= " AND `glpi_softwarelicenses`.`id` NOT IN (".implode(',',$installed).")";
+      }
+      $query .= " ORDER BY `softname`, `version`;";
+
+      $req = $DB->request($query);
+      if ($number = $req->numrows()) {
+         if ($canedit) {
+            $rand = mt_rand();
+            Html::openMassiveActionsForm('massSoftwareLicense'.$rand);
+
+            $actions = array('Computer_SoftwareLicense'.MassiveAction::CLASS_ACTION_SEPARATOR.
+                              'install' => _x('button', 'Install'));
+            if (SoftwareLicense::canUpdate()) {
+               $actions['purge'] = _x('button', 'Delete permanently');
+            }
+
+            $massiveactionparams = array('num_displayed'    => $number,
+                                         'container'        => 'massSoftwareLicense'.$rand,
+                                         'specific_actions' => $actions);
+
+            Html::showMassiveActions($massiveactionparams);
+         }
+         echo "<table class='tab_cadre_fixehov'>";
+
+         $header_begin  = "<tr>";
+         $header_top    = '';
+         $header_bottom = '';
+         $header_end    = '';
+         if ($canedit) {
+            $header_begin  .= "<th width='10'>";
+            $header_top    .= Html::getCheckAllAsCheckbox('massSoftwareLicense'.$rand);
+            $header_bottom .= Html::getCheckAllAsCheckbox('massSoftwareLicense'.$rand);
+            $header_end    .= "</th>";
+         }
+         $header_end .= "<th>" . __('Name') . "</th><th>" . __('Status') . "</th>";
+         $header_end .= "<th>" .__('Version')."</th><th>" . __('License') . "</th>";
+         $header_end .= "</tr>\n";
+         echo $header_begin.$header_top.$header_end;
+
+         $cat = true;
+         foreach ($req as $data) {
+            self::displaySoftsByLicense($data, $computers_id, $withtemplate, $canedit);
+            Session::addToNavigateListItems('SoftwareLicense', $data["id"]);
+         }
+
+         echo $header_begin.$header_bottom.$header_end;
+
+         echo "</table>";
+         if ($canedit) {
+            $massiveactionparams['ontop'] = false;
+            Html::showMassiveActions($massiveactionparams);
+            Html::closeForm();
+         }
+      }
+
+      echo "</div>\n";
+
+   }
+   
+   static function showForComputerVirtualMachine(ComputerVirtualMachine $comp, $withtemplate='') {
+      global $DB, $CFG_GLPI;
+
+      if (!Software::canView()) {
+         return false;
+      }
+
+      $computers_id = $comp->getField('computers_id');
+	  $vm_id 		= $comp->getField('id');
+      $rand         = mt_rand();
+      $canedit      = Session::haveRightsOr("software", array(CREATE, UPDATE, DELETE, PURGE));
+      $entities_id  = $comp->fields["entities_id"];
+
+      $crit         = Session::getSavedOption(__CLASS__, 'criterion', -1);
+
+      $where        = '';
+      if ($crit > -1) {
+         $where = " AND `glpi_softwares`.`softwarecategories_id` = $crit";
+      }
+
+      $add_dynamic  = '';
+      if (Plugin::haveImport()) {
+         $add_dynamic = "`glpi_computers_softwareversions`.`is_dynamic`,";
+      }
+	  
+	  // Modification de la requete pour select également glpi_softwareversions.is_valid + clause where de sélection de la vm
+
+      $query = "SELECT `glpi_softwares`.`softwarecategories_id`,
+                       `glpi_softwares`.`name` AS softname,
+                       `glpi_computers_softwareversions`.`id`,
+                       $add_dynamic
+                       `glpi_states`.`name` AS state,
+                       `glpi_softwareversions`.`id` AS verid,
+                       `glpi_softwareversions`.`softwares_id`,
+                       `glpi_softwareversions`.`name` AS version,
+                       `glpi_softwares`.`is_valid` AS softvalid,
+					   `glpi_computers_softwareversions`.`is_valid` AS metricvalid
+                FROM `glpi_computers_softwareversions`
+                LEFT JOIN `glpi_softwareversions`
+                     ON (`glpi_computers_softwareversions`.`softwareversions_id`
+                           = `glpi_softwareversions`.`id`)
+                LEFT JOIN `glpi_states`
+                     ON (`glpi_states`.`id` = `glpi_softwareversions`.`states_id`)
+                LEFT JOIN `glpi_softwares`
+                     ON (`glpi_softwareversions`.`softwares_id` = `glpi_softwares`.`id`)
+                WHERE `glpi_computers_softwareversions`.`computers_id` = '$computers_id'
+                      AND `glpi_computers_softwareversions`.`is_deleted` = '0'
+					  AND `glpi_computers_softwareversions`.`computervirtualmachines_id` = '$vm_id'
+                      $where
+                ORDER BY `softname`, `version`";
+      $result = $DB->query($query);
+      $i      = 0;
+
+
+      if ((empty($withtemplate) || ($withtemplate != 2))
+          && $canedit) {
+         echo "<form method='post' action='".
+                $CFG_GLPI["root_doc"]."/front/computer_softwareversion.form.php'>";
+         echo "<div class='spaced'><table class='tab_cadre_fixe'>";
+         echo "<tr class='tab_bg_1'><td class='center'>";
+         echo _n('Software', 'Software', Session::getPluralNumber())."&nbsp;&nbsp;";
+         echo "<input type='hidden' name='computers_id' value='$computers_id'>";
+		 echo "<input type='hidden' name='computervirtualmachines_id' value='$vm_id'>";
+         Software::dropdownSoftwareToInstall("softwareversions_id", $entities_id);
+         echo "</td><td width='20%'>";
+         echo "<input type='submit' name='add' value=\""._sx('button', 'Install')."\"
+                class='submit'>";
+         echo "</td>";
+         echo "</tr>\n";
+         echo "</table></div>\n";
+         Html::closeForm();
+      }
+      echo "<div class='spaced'>";
+
+      $cat = -1;
+
+      Session::initNavigateListItems('Software',
+                           //TRANS : %1$s is the itemtype name,
+                           //        %2$s is the name of the item (used for headings of a list)
+                                     sprintf(__('%1$s = %2$s'),
+                                             ComputerVirtualMachine::getTypeName(1), $comp->getName()));
+      Session::initNavigateListItems('SoftwareLicense',
+                           //TRANS : %1$s is the itemtype name,
+                           //        %2$s is the name of the item (used for headings of a list)
+                                     sprintf(__('%1$s = %2$s'),
+                                             ComputerVirtualMachine::getTypeName(1), $comp->getName()));
+
+      // Mini Search engine
+      echo "<table class='tab_cadre_fixe'>";
+      echo "<tr class='tab_bg_1'><th colspan='2'>".Software::getTypeName(Session::getPluralNumber())."</th></tr>";
+      echo "<tr class='tab_bg_1'><td class='center'>";
+      echo __('Category')."</td><td>";
+      SoftwareCategory::dropdown(array('value'      => $crit,
+                                       'toadd'      => array('-1' =>  __('All categories')),
+                                       'emptylabel' => __('Uncategorized software'),
+                                       'on_change'  => 'reloadTab("start=0&criterion="+this.value)'));
+      echo "</td></tr></table></div>";
+      $number = $DB->numrows($result);
+      $start  = (isset($_REQUEST['start']) ? intval($_REQUEST['start']) : 0);
+      if ($start >= $number) {
+         $start = 0;
+      }
+
+      $installed = array();
+
+      if ($number) {
+         echo "<div class='spaced'>";
+         Html::printAjaxPager('',  $start, $number);
+
+         if ($canedit) {
+            $rand = mt_rand();
+            Html::openMassiveActionsForm('mass'.__CLASS__.$rand);
+            $massiveactionparams
+               = array('num_displayed'
+                         => $number,
+                       'container'
+                         => 'mass'.__CLASS__.$rand,
+                       'specific_actions'
+                         => array('purge' => _x('button', 'Delete permanently')));
+
+            Html::showMassiveActions($massiveactionparams);
+         }
+         echo "<table class='tab_cadre_fixehov'>";
+
+
+         $header_begin  = "<tr>";
+         $header_top    = '';
+         $header_bottom = '';
+         $header_end    = '';
+         if ($canedit) {
+            $header_begin  .= "<th width='10'>";
+            $header_top    .= Html::getCheckAllAsCheckbox('mass'.__CLASS__.$rand);
+            $header_bottom .= Html::getCheckAllAsCheckbox('mass'.__CLASS__.$rand);
+            $header_end    .= "</th>";
+         }
+         $header_end .= "<th>" . __('Name') . "</th><th>" . __('Status') . "</th>";
+         $header_end .= "<th>" .__('Version')."</th><th>" . __('License') . "</th>";
+         if (Plugin::haveImport()) {
+            $header_end .= "<th>".__('Automatic inventory')."</th>";
+         }
+         $header_end .= "<th>".SoftwareCategory::getTypeName(1)."</th>";
+         $header_end .= "<th>".__('Valid license')."</th>";
+		 $header_end .= "<th>".__('Metric license')."</th>";
+         $header_end .= "</tr>\n";
+         echo $header_begin.$header_top.$header_end;
+
+		//Affichage des résultats de la requete -> corp du tableau de l'onglet software
+         for ($row=0 ; $data=$DB->fetch_assoc($result) ; $row++) {
+
+            if (($row >= $start) && ($row < ($start + $_SESSION['glpilist_limit']))) {
+               $licids = self::softsByCategory($data, $computers_id, $withtemplate,
+                                               $canedit, true);
+            } else {
+               $licids = self::softsByCategory($data, $computers_id, $withtemplate,
+                                               $canedit, false);
+            }
+            Session::addToNavigateListItems('Software', $data["softwares_id"]);
+
+            foreach ($licids as $licid) {
+               Session::addToNavigateListItems('SoftwareLicense', $licid);
+               $installed[] = $licid;
+            }
+         }
+
+         echo $header_begin.$header_bottom.$header_end;
+         echo "</table>";
+         if ($canedit) {
+            $massiveactionparams['ontop'] =false;
+            Html::showMassiveActions($massiveactionparams);
+            Html::closeForm();
+         }
+      } else {
+         echo "<p class='center b'>".__('No item found')."</p>";
+      }
+      echo "</div>\n";
+      if ((empty($withtemplate) || ($withtemplate != 2))
+          && $canedit) {
+         echo "<form method='post' action='".$CFG_GLPI["root_doc"].
+                "/front/computer_softwarelicense.form.php'>";
+         echo "<div class='spaced'><table class='tab_cadre_fixe'>";
+         echo "<tr class='tab_bg_1'>";
+         echo "<td class='center'>";
+         echo _n('License', 'Licenses', Session::getPluralNumber())."&nbsp;&nbsp;";
+         echo "<input type='hidden' name='computers_id' value='$computers_id'>";
+		 echo "<input type='hidden' name='computervirtualmachines_id' value='$vm_id'>";
+         Software::dropdownLicenseToInstall("softwarelicenses_id", $entities_id);
+         echo "</td><td width='20%'>";
+         echo "<input type='submit' name='add' value=\"" ._sx('button', 'Add')."\" class='submit'>";
+         echo "</td></tr>\n";
+         echo "</table></div>\n";
+         Html::closeForm();
+      }
+      echo "<div class='spaced'>";
+      // Affected licenses NOT installed -> LOOK AT THIS
       $query = "SELECT `glpi_softwarelicenses`.*,
                        `glpi_computers_softwarelicenses`.`id` AS linkID,
                        `glpi_softwares`.`name` AS softname,
@@ -1025,6 +1395,7 @@ class Computer_SoftwareVersion extends CommonDBRelation {
                                                                   $data['softwarecategories_id']);
          echo "</td>";
          echo "<td class='center'>" .Dropdown::getYesNo($data["softvalid"]) . "</td>";
+		 echo "<td class='center'>" .Dropdown::getYesNo($data["metricvalid"]) . "</td>";
          echo "</tr>\n";
       }
 
@@ -1138,25 +1509,25 @@ class Computer_SoftwareVersion extends CommonDBRelation {
    **/
   function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
-     $nb = 0;
       switch ($item->getType()) {
          case 'Software' :
             if (!$withtemplate) {
                if ($_SESSION['glpishow_count_on_tabs']) {
-                  $nb = self::countForSoftware($item->getID());
+                  return self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
+                                              self::countForSoftware($item->getID()));
                }
-               return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb);
+               return self::getTypeName(Session::getPluralNumber());
             }
             break;
 
          case 'SoftwareVersion' :
             if (!$withtemplate) {
+               $nb = 0;
                if ($_SESSION['glpishow_count_on_tabs']) {
                   $nb = self::countForVersion($item->getID());
                }
                return array(1 => __('Summary'),
-                            2 => self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
-                                                      $nb));
+                            2 => self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb));
             }
             break;
 
@@ -1164,16 +1535,28 @@ class Computer_SoftwareVersion extends CommonDBRelation {
             // Installation allowed for template
             if (Software::canView()) {
                if ($_SESSION['glpishow_count_on_tabs']) {
-                  $nb = countElementsInTable('glpi_computers_softwareversions',
-                                             "computers_id = '".$item->getID()."'
-                                                  AND `is_deleted`='0'");
+                  return self::createTabEntry(Software::getTypeName(Session::getPluralNumber()),
+                                              countElementsInTable('glpi_computers_softwareversions',
+                                                                   "computers_id = '".$item->getID()."'
+                                                                      AND `is_deleted`='0'"));
                }
-               return self::createTabEntry(Software::getTypeName(Session::getPluralNumber()), $nb);
+               return Software::getTypeName(Session::getPluralNumber());
             }
             break;
-      }
+  
+		case 'ComputerVirtualMachine' :
+			if ($_SESSION['glpishow_count_on_tabs']) {
+                  return self::createTabEntry(Software::getTypeName(Session::getPluralNumber()),
+                                              countElementsInTable('glpi_computers_softwareversions',
+                                                                   "computers_id = '".$item->fields['computers_id']."'
+                                                                      AND `is_deleted`='0'"));
+               }
+            return Software::getTypeName(Session::getPluralNumber());
+			break;
+		}
       return '';
-   }
+	 }
+   
 
 
    /**
@@ -1188,6 +1571,9 @@ class Computer_SoftwareVersion extends CommonDBRelation {
 
       } else if ($item->getType()=='Computer') {
          self::showForComputer($item, $withtemplate);
+		 
+	  } else if($item->getType()=='ComputerVirtualMachine') {
+		 self::showForComputerVirtualMachine($item, $withtemplate);
 
       } else if ($item->getType()=='SoftwareVersion') {
          switch ($tabnum) {

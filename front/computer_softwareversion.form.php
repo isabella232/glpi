@@ -35,19 +35,30 @@
 * @brief
 */
 
-
 include ('../inc/includes.php');
 
 Session::checkRight("software", UPDATE);
 $inst = new Computer_SoftwareVersion();
+$options = array('disable_unicity_check' => true);
 
 // From Computer - Software tab (add form)
 if (isset($_POST["add"])) {
    if (isset($_POST["computers_id"]) && $_POST["computers_id"]
        && isset($_POST["softwareversions_id"]) && $_POST["softwareversions_id"]) {
-
-      if ($newID = $inst->add(array('computers_id'        => $_POST["computers_id"],
-                                    'softwareversions_id' => $_POST["softwareversions_id"]))) {
+	   
+	  if(isset($_POST["computervirtualmachines_id"]) && $_POST["computervirtualmachines_id"]) {
+		if ($newID = $inst->add(array('computers_id'        => $_POST["computers_id"],
+                                    'softwareversions_id' => $_POST["softwareversions_id"],
+									'computervirtualmachines_id' => $_POST["computervirtualmachines_id"]),$options)){
+									
+			Event::log($_POST["computers_id"], "computers", 5, "inventory",
+                    //TRANS: %s is the user login
+                    sprintf(__('%s installs software'), $_SESSION["glpiname"]));
+		}
+	}
+	
+      elseif ($newID = $inst->add(array('computers_id'        => $_POST["computers_id"],
+                                    'softwareversions_id' => $_POST["softwareversions_id"]),$options)) {
 
          Event::log($_POST["computers_id"], "computers", 5, "inventory",
                     //TRANS: %s is the user login

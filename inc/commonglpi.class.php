@@ -192,7 +192,7 @@ class CommonGLPI {
     * @param &$ong       array defined tab array
     * @param $options    array of options (for withtemplate)
     *
-    * @return $this
+    *  @return nothing (set the tab array)
    **/
    function addStandardTab($itemtype, array &$ong, array $options) {
 
@@ -218,7 +218,6 @@ class CommonGLPI {
             }
             break;
       }
-      return $this;
    }
 
 
@@ -226,8 +225,6 @@ class CommonGLPI {
     * @since version 0.85
     *
     * @param $ong   array
-    *
-    * @return $this
    **/
    function addDefaultFormTab(array &$ong) {
       global $CFG_GLPI;
@@ -237,7 +234,6 @@ class CommonGLPI {
           || !method_exists($this, "showForm")) {
          $ong[$this->getType().'$main'] = $this->getTypeName(1);
       }
-      return $this;
    }
 
 
@@ -612,7 +608,7 @@ class CommonGLPI {
       }
       echo "<div class='form_content'>";
       echo "<div class='$class'>";
-      $this->showForm($options['id'], $options);
+      $this->showForm($_REQUEST['id'], $_REQUEST);
       echo "</div>";
       echo "</div>";
    }
@@ -1104,6 +1100,13 @@ class CommonGLPI {
             Html::displayNotFoundError();
          }
       }
+      
+      // in case of lefttab layout, we couldn't see "right error" message
+      if ($this->get_item_to_display_tab) {
+         if (isset($_GET["id"]) && $_GET["id"] && !$this->can($_GET["id"], READ)) {
+            html::displayRightError();
+         }
+      }
 
       // in case of lefttab layout, we couldn't see "right error" message
       if ($this->get_item_to_display_tab) {
@@ -1115,8 +1118,8 @@ class CommonGLPI {
       $this->showNavigationHeader($options);
       if (!self::isLayoutExcludedPage() && self::isLayoutWithMain()) {
 
-         if (!isset($options['id'])) {
-            $options['id'] = 0;
+         if (!isset($_REQUEST['id'])) {
+            $_REQUEST['id'] = 0;
          }
          $this->showPrimaryForm($options);
       }

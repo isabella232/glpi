@@ -142,8 +142,7 @@ class TicketFollowup  extends CommonDBTM {
       $ticket = new Ticket();
       if (!$ticket->can($this->getField('tickets_id'), READ)
         // No validation for closed tickets
-        || (in_array($ticket->fields['status'],$ticket->getClosedStatusArray())
-            && !$ticket->isAllowedStatus($ticket->fields['status'], Ticket::INCOMING))) {
+        || in_array($ticket->fields['status'],$ticket->getClosedStatusArray())) {
          return false;
       }
       return $ticket->canAddFollowups();
@@ -183,13 +182,14 @@ class TicketFollowup  extends CommonDBTM {
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
       if ($item->getType() == 'Ticket') {
-         $nb = 0;
          if (Session::haveRight(self::$rightname, self::SEEPUBLIC)) {
             if ($_SESSION['glpishow_count_on_tabs']) {
-               $nb = countElementsInTable('glpi_ticketfollowups',
-                                          "`tickets_id` = '".$item->getID()."'");
+               return self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
+                                           countElementsInTable('glpi_ticketfollowups',
+                                                                "`tickets_id`
+                                                                     = '".$item->getID()."'"));
             }
-            return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb);
+            return self::getTypeName(Session::getPluralNumber());
          }
       }
       return '';
@@ -305,8 +305,7 @@ class TicketFollowup  extends CommonDBTM {
          $input['content'] .= "\n";
          foreach ($docadded as $name) {
             //TRANS: %s is tha document name
-            $input['content'] .= "\n".sprintf(__('Added document: %s'),
-                                              Toolbox::addslashes_deep($name['data']));
+            $input['content'] .= "\n".sprintf(__('Added document: %s'), $name['data']);
          }
       }
 
@@ -392,17 +391,10 @@ class TicketFollowup  extends CommonDBTM {
          $donotif = false; // Done for ticket update (new status)
       }
 
-      //manage reopening of ticket
-      $reopened = false;
-      if (!isset($this->input['_status'])) {
-         $this->input['_status'] = $this->input["_job"]->fields["status"];
-      }
-      // if reopen set (from followup form or mailcollector)
-      // and status is reopenable and not changed in form
       if (isset($this->input["_reopen"])
           && $this->input["_reopen"]
-          && in_array($this->input["_job"]->fields["status"], Ticket::getReopenableStatusArray())
-          && $this->input['_status'] == $this->input["_job"]->fields["status"]) {
+          && in_array($this->input["_job"]->fields["status"],
+                      array(CommonITILObject::CLOSED, CommonITILObject::SOLVED, CommonITILObject::WAITING))) {
 
          if (($this->input["_job"]->countUsers(CommonITILActor::ASSIGN) > 0)
              || ($this->input["_job"]->countGroups(CommonITILActor::ASSIGN) > 0)
@@ -413,27 +405,16 @@ class TicketFollowup  extends CommonDBTM {
          }
 
          $update['id'] = $this->input["_job"]->fields['id'];
-         
-         // don't notify on Ticket - update event
-         $update['_disablenotif'] = true;
-         
-         // Use update method for history 
+         // Use update method for history
          $this->input["_job"]->update($update);
-         $reopened     = true;
+         $donotif      = false; // Done for ticket update (new status)
       }
 
-      //change ticket status only if imput change
-      if (!$reopened
-          && $this->input['_status'] != $this->input['_job']->fields['status']) {
-
-         $update['status'] = $this->input['_status'];
-         $update['id']     = $this->input['_job']->fields['id'];
-         
-         // don't notify on Ticket - update event
-         $update['_disablenotif'] = true;
-
-         // Use update method for history 
-         $this->input['_job']->update($update);
+      //change ticket status
+      if (isset($_REQUEST['_status']) && !empty($_REQUEST['_status'])) {
+         $ticket = new Ticket();
+         $ticket->update(array('id'     => intval($_REQUEST['tickets_id']), 
+                               'status' => intval($_REQUEST['_status'])));
       }
 
       if ($donotif) {
@@ -614,23 +595,12 @@ class TicketFollowup  extends CommonDBTM {
                || (isset($_SESSION["glpigroups"])
                    && $ticket->haveAGroup(CommonITILActor::ASSIGN, $_SESSION['glpigroups'])));
 
-      $requester = ($ticket->isUser(CommonITILActor::REQUESTER, Session::getLoginUserID())
-                    || (isset($_SESSION["glpigroups"])
-                        && $ticket->haveAGroup(CommonITILActor::REQUESTER, $_SESSION['glpigroups'])));
-
       $reopen_case = false;
-      if ($this->isNewID($ID)) {
-          if (in_array($ticket->fields["status"], $ticket->getClosedStatusArray())
-             && $ticket->isAllowedStatus($ticket->fields['status'], Ticket::INCOMING)) {
-            $reopen_case = true;
-            echo "<div class='center b'>".__('If you want to reopen the ticket, you must specify a reason')."</div>";
-         }
-
-         // the reqester triggers the reopening on close/solve/waiting status
-         if ($requester
-             && in_array($ticket->fields['status'], Ticket::getReopenableStatusArray())) {
-            $reopen_case = true;
-         }
+      if ($this->isNewID($ID)
+          && in_array($ticket->fields["status"], $ticket->getClosedStatusArray())
+          && $ticket->isAllowedStatus($ticket->fields['status'], Ticket::INCOMING)) {
+         $reopen_case = true;
+         echo "<div class='center b'>".__('If you want to reopen the ticket, you must specify a reason')."</div>";
       }
 
       if ($tech) {
@@ -668,9 +638,7 @@ class TicketFollowup  extends CommonDBTM {
          Dropdown::showYesNo('is_private', $this->fields["is_private"]);
          echo "</td></tr>";
 
-         if ($ID <= 0) {
-            Document_Item::showSimpleAddForItem($this);
-         }
+         Document_Item::showSimpleAddForItem($this);
 
          $this->showFormButtons($options);
 
@@ -693,9 +661,7 @@ class TicketFollowup  extends CommonDBTM {
 
          echo "</td></tr>\n";
 
-         if ($ID <= 0) {
-            Document_Item::showSimpleAddForItem($ticket);
-         }
+         Document_Item::showSimpleAddForItem($ticket);
 
          $this->showFormButtons($options);
       }

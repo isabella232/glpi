@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -141,11 +141,13 @@ class Group extends CommonTreeDropdown {
 
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
-      if (!$withtemplate && Group::canUpdate()) {
-         $nb = 0;
+      if (!$withtemplate
+          && Group::canUpdate()) {
          switch ($item->getType()) {
             case 'Group' :
                $ong = array();
+
+               $nb = 0;
                if ($_SESSION['glpishow_count_on_tabs']) {
                   $nb = countElementsInTable($this->getTable(),
                                              "`groups_id` = '".$item->getID()."'");
@@ -204,21 +206,21 @@ class Group extends CommonTreeDropdown {
 
       $this->addDefaultFormTab($ong);
       $this->addStandardTab('Group', $ong, $options);
-      if (isset($this->fields['is_usergroup'])
+      if (isset($this->fields['is_usergroup']) 
           && $this->fields['is_usergroup']) {
          $this->addStandardTab('Group_User', $ong, $options);
       }
-      if (isset($this->fields['is_notify'])
+      if (isset($this->fields['is_notify']) 
           && $this->fields['is_notify']) {
          $this->addStandardTab('NotificationTarget', $ong, $options);
       }
-      if (isset($this->fields['is_requester'])
+      if (isset($this->fields['is_requester']) 
           && $this->fields['is_requester']) {
          $this->addStandardTab('Ticket', $ong, $options);
       }
       $this->addStandardTab('Item_Problem', $ong, $options);
       $this->addStandardTab('Change_Item', $ong, $options);
-
+      
       $this->addStandardTab('Log',$ong, $options);
       return $ong;
    }
@@ -296,7 +298,7 @@ class Group extends CommonTreeDropdown {
       echo "<td>"._n('Item', 'Items', Session::getPluralNumber())."</td>";
       echo "<td>";
       Dropdown::showYesNo('is_itemgroup', $this->fields['is_itemgroup']);
-      echo "</td><td colspan='2'></td></tr>";
+      echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
       echo "<td>"._n('User', 'Users', Session::getPluralNumber())."</td><td>";

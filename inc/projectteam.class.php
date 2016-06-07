@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -90,14 +90,14 @@ class ProjectTeam extends CommonDBRelation {
    **/
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
-      if (!$withtemplate && self::canView()) {
-         $nb = 0;
+      if (!$withtemplate
+          && self::canView()) {
          switch ($item->getType()) {
             case 'Project' :
                if ($_SESSION['glpishow_count_on_tabs']) {
-                  $nb = $item->getTeamCount();
+                  return self::createTabEntry(self::getTypeName(1), $item->getTeamCount());
                }
-               return self::createTabEntry(self::getTypeName(1), $nb);
+               return self::getTypeName(1);
          }
       }
       return '';

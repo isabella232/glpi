@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -293,9 +293,9 @@ class Item_Devices extends CommonDBRelation {
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
       if ($item->canView()) {
-         $nb = 0;
          if (in_array($item->getType(), self::getConcernedItems())) {
             if ($_SESSION['glpishow_count_on_tabs']) {
+               $nb = 0;
                foreach (self::getItemAffinities($item->getType()) as $link_type) {
                   $nb   += countElementsInTable($link_type::getTable(),
                                                 "`items_id` = '".$item->getID()."'
@@ -303,8 +303,10 @@ class Item_Devices extends CommonDBRelation {
                                                    AND `is_deleted` = '0'");
                }
             }
-            return self::createTabEntry(_n('Component', 'Components', Session::getPluralNumber()),
-                                        $nb);
+            if (isset($nb)) {
+               return self::createTabEntry(_n('Component', 'Components', $nb), $nb);
+            }
+            return _n('Component', 'Components', Session::getPluralNumber());
          }
          if ($item instanceof CommonDevice) {
             if ($_SESSION['glpishow_count_on_tabs']) {
@@ -316,7 +318,10 @@ class Item_Devices extends CommonDBRelation {
                                           "`$foreignkeyField` = '".$item->getID()."'
                                             AND `is_deleted` = '0'");
             }
-            return self::createTabEntry(_n('Item', 'Items', Session::getPluralNumber()), $nb);
+            if (isset($nb)) {
+               return self::createTabEntry(_n('Item', 'Items', $nb), $nb);
+            }
+            return _n('Item', 'Items', Session::getPluralNumber());
          }
       }
       return '';
@@ -424,7 +429,7 @@ class Item_Devices extends CommonDBRelation {
          if ($is_device) {
             Dropdown::showNumber('number_devices_to_add', array('value' => 0,
                                                                 'min'   => 0,
-                                                                'max'   => 10));
+                                                                'max'   => 100));
          } else {
             Dropdown::showSelectItemFromItemtypes(array('itemtype_name'       => 'devicetype',
                                                         'items_id_name'       => 'devices_id',

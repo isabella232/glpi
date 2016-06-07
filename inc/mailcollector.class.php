@@ -277,10 +277,12 @@ class MailCollector  extends CommonDBTM {
       }
       echo "</td></tr>";
 
-      echo "<tr class='tab_bg_1'><td>" . __('Use Kerberos authentication') . "</td>";
-      echo "<td>";
-      Dropdown::showYesNo("use_kerberos", $this->fields["use_kerberos"]);
-      echo "</td></tr>\n";
+      if (version_compare(PHP_VERSION, '5.3.2', '>=')) {
+         echo "<tr class='tab_bg_1'><td>" . __('Use Kerberos authentication') . "</td>";
+         echo "<td>";
+         Dropdown::showYesNo("use_kerberos", $this->fields["use_kerberos"]);
+         echo "</td></tr>\n";
+      }
 
 
       if ($type != "pop") {
@@ -677,11 +679,11 @@ class MailCollector  extends CommonDBTM {
          }
       }
       //  Who is the user ?
-      $tkt['_users_id_requester']                              = User::getOrImportByEmail($head['from']);
-      $tkt["_users_id_requester_notif"]['use_notification'][0] = 1;
+      $tkt['_users_id_requester']                           = User::getOrImportByEmail($head['from']);
+      $tkt["_users_id_requester_notif"]['use_notification'] = 1;
       // Set alternative email if user not found / used if anonymous mail creation is enable
       if (!$tkt['_users_id_requester']) {
-         $tkt["_users_id_requester_notif"]['alternative_email'][0] = $head['from'];
+         $tkt["_users_id_requester_notif"]['alternative_email'] = $head['from'];
       }
 
       // Add to and cc as additional observer if user found
@@ -1050,7 +1052,8 @@ class MailCollector  extends CommonDBTM {
    **/
    function connect() {
 
-      if ($this->fields['use_kerberos']) {
+      if (version_compare(PHP_VERSION, '5.3.2', '<')
+          || $this->fields['use_kerberos']) {
          $this->marubox = @imap_open($this->fields['host'], $this->fields['login'],
                                      Toolbox::decrypt($this->fields['passwd'], GLPIKEY),
                                      CL_EXPUNGE, 1);

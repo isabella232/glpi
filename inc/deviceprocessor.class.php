@@ -65,7 +65,13 @@ class DeviceProcessor extends CommonDevice {
                                      'type'  => 'integer'),
                                array('name'  => 'nbthreads_default',
                                      'label' => __('Number of threads'),
-                                     'type'  => 'integer')
+                                     'type'  => 'integer'),
+							   array('name' => 'core_factor',
+								     'label' => __('Core factor'),
+									 'type' => 'text'),
+							   array('name' => 'pvu',
+								     'label' => __('PVU'),
+									 'type' => 'text')
                            ));
    }
 
@@ -84,8 +90,6 @@ class DeviceProcessor extends CommonDevice {
       $tab[12]['name']     = __('Frequency');
       $tab[12]['datatype'] = 'string';
 
-
-
       $tab[13]['table']    = $this->getTable();
       $tab[13]['field']    = 'nbcores_default';
       $tab[13]['name']     = __('Number of cores');
@@ -95,6 +99,16 @@ class DeviceProcessor extends CommonDevice {
       $tab[14]['field']    = 'nbthreads_default';
       $tab[14]['name']     = __('Number of threads');
       $tab[14]['datatype'] = 'integer';
+	  
+	  $tab[15]['table']    = $this->getTable();
+      $tab[15]['field']    = 'core_factor';
+      $tab[15]['name']     = __('Core factor');
+      $tab[15]['datatype'] = 'integer';
+	  
+	  $tab[16]['table']    = $this->getTable();
+      $tab[16]['field']    = 'pvu';
+      $tab[16]['name']     = __('PVU');
+      $tab[16]['datatype'] = 'integer';
 
       return $tab;
    }
@@ -109,7 +123,7 @@ class DeviceProcessor extends CommonDevice {
    function prepareInputForAddOrUpdate($input) {
 
       foreach (array('frequence', 'frequency_default', 'nbcores_default',
-                     'nbthreads_default') as $field) {
+                     'nbthreads_default','core_factor','pvu') as $field) {
          if (isset($input[$field]) && !is_numeric($input[$field])) {
             $input[$field] = 0;
          }

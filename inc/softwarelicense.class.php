@@ -128,7 +128,6 @@ class SoftwareLicense extends CommonDBTM {
     * @return nothing
    **/
    static function updateValidityIndicator($ID) {
-
       $lic = new self();
       if ($lic->getFromDB($ID)) {
          $valid = self::computeValidityIndicator($ID, $lic->fields['number']);
@@ -261,12 +260,13 @@ class SoftwareLicense extends CommonDBTM {
       echo "<a href='software.form.php?id=".$softwares_id."'>".
              Dropdown::getDropdownName("glpi_softwares", $softwares_id)."</a>";
       echo "</td>";
+	  
       echo "<td>".__('Type')."</td>";
       echo "<td>";
       SoftwareLicenseType::dropdown(array('value' => $this->fields["softwarelicensetypes_id"]));
       echo "</td></tr>\n";
-
       echo "<tr class='tab_bg_1'>";
+	  
       echo "<td>".__('Name')."</td>";
       echo "<td>";
       Html::autocompletionTextField($this,"name");
@@ -274,6 +274,15 @@ class SoftwareLicense extends CommonDBTM {
       echo "<td>".__('Serial number')."</td>";
       echo "<td>";
       Html::autocompletionTextField($this,"serial");
+      echo "</td></tr>\n";
+	  // MY_CHAMPS
+	  
+	  echo "<tr class='tab_bg_1'>";
+	  echo "<td>".__('Metric')."</td>";
+      echo "<td>";
+      //SoftwareLicenseMetric::dropdown(array('value' => $this->fields["softwarelicensetype_id"]));
+	  SoftwareLicenseMetric::dropdown(array('value' => $this->fields["softwarelicensemetrics_id"]));
+	  //SoftwareLicenseMetric::dropdown(array('name' => $this->fields["softwarelicensemetrics_name"]));
       echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'>";
@@ -338,6 +347,9 @@ class SoftwareLicense extends CommonDBTM {
          echo "</td></tr>";
       }
 
+	  
+	  
+	  
       $this->showFormButtons($options);
 
       return true;
@@ -396,6 +408,19 @@ class SoftwareLicense extends CommonDBTM {
       $tab[162]['name']          = __('Inventory number');
       $tab[162]['massiveaction'] = false;
       $tab[162]['datatype']      = 'string';
+	  
+	  // MY PARAMS
+	  $tab[1000]['table']         = $this->getTable();
+      $tab[1000]['field']         = 'core_factor';
+      $tab[1000]['name']          = __('Core factor');
+      $tab[1000]['massiveaction'] = false;
+      $tab[1000]['datatype']      = 'number';
+	  
+	  $tab[1001]['table']         = $this->getTable();
+      $tab[1001]['field']         = 'pvu';
+      $tab[1001]['name']          = __('PVU');
+      $tab[1001]['massiveaction'] = false;
+      $tab[1001]['datatype']      = 'number';
 
       $tab[4]['table']           = $this->getTable();
       $tab[4]['field']           = 'number';
@@ -408,6 +433,11 @@ class SoftwareLicense extends CommonDBTM {
       $tab[5]['field']           = 'name';
       $tab[5]['name']            = __('Type');
       $tab[5]['datatype']        = 'dropdown';
+	  
+	  $tab[1002]['table']           = 'glpi_softwarelicensemetricss';
+      $tab[1002]['field']           = 'name';
+      $tab[1002]['name']            = __('Type');
+      $tab[1002]['datatype']        = 'dropdown';
 
       $tab[6]['table']           = 'glpi_softwareversions';
       $tab[6]['field']           = 'name';
@@ -863,14 +893,14 @@ class SoftwareLicense extends CommonDBTM {
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
       if (!$withtemplate) {
-         $nb = 0;
          switch ($item->getType()) {
             case 'Software' :
                if ($_SESSION['glpishow_count_on_tabs']) {
-                  $nb = self::countForSoftware($item->getID());
+                  $count = self::countForSoftware($item->getID());
+                  return self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
+                                              (($count >= 0) ? $count : '&infin;'));
                }
-               return self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
-                                           (($nb >= 0) ? $nb : '&infin;'));
+               return self::getTypeName(Session::getPluralNumber());
          }
       }
       return '';

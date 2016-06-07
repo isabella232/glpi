@@ -234,28 +234,25 @@ class ProfileRight extends CommonDBChild {
 
 
    /**
-    * Update the rights of a profile (static since 0.90.1)
-    *
     * @param $profiles_id
     * @param $rights         array
     */
-   public static function updateProfileRights($profiles_id, array $rights=array()) {
+   function updateProfileRights($profiles_id, array $rights=array()) {
 
-      $me = new self();
       foreach ($rights as $name => $right) {
-         if (isset($right)) {
-            if ($me->getFromDBByQuery("WHERE `profiles_id` = '$profiles_id'
-                                             AND `name` = '$name'")) {
+         if ($right !== false) {
+            if ($this->getFromDBByQuery("WHERE `profiles_id` = '$profiles_id'
+                                               AND `name` = '$name'")) {
 
-               $input = array('id'          => $me->getID(),
+               $input = array('id'          => $this->getID(),
                               'rights'      => $right);
-               $me->update($input);
+               $this->update($input);
 
             } else {
                $input = array('profiles_id' => $profiles_id,
                               'name'        => $name,
                               'rights'      => $right);
-               $me->add($input);
+               $this->add($input);
             }
          }
       }

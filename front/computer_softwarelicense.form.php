@@ -40,10 +40,11 @@ include ('../inc/includes.php');
 
 Session::checkRight("software", UPDATE);
 $csl = new Computer_SoftwareLicense();
+$options = array('disable_unicity_check' => true);
 
 if (isset($_POST["add"])) {
    if ($_POST['softwarelicenses_id'] > 0 ) {
-      if ($newID = $csl->add($_POST)) {
+      if ($newID = $csl->add($_POST,$options)) {
          Event::log($_POST['softwarelicenses_id'], "softwarelicense", 4, "inventory",
                     //TRANS: %s is the user login
                     sprintf(__('%s associates a computer and a license'), $_SESSION["glpiname"]));

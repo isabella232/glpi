@@ -9,7 +9,7 @@
 
  based on GLPI - Gestionnaire Libre de Parc Informatique
  Copyright (C) 2003-2014 by the INDEPNET Development Team.
-
+ 
  -------------------------------------------------------------------------
 
  LICENSE
@@ -1133,22 +1133,24 @@ class NotificationTarget extends CommonDBChild {
 
    function getTabNameForItem(CommonGLPI $item, $withtemplate=0) {
 
-      if (!$withtemplate && Notification::canView()) {
-         $nb = 0;
+      if (!$withtemplate
+          && Notification::canView()) {
          switch ($item->getType()) {
             case 'Group' :
                if ($_SESSION['glpishow_count_on_tabs']) {
-                  $nb = self::countForGroup($item);
+                  return self::createTabEntry(Notification::getTypeName(Session::getPluralNumber()),
+                                              self::countForGroup($item));
                }
-               return self::createTabEntry(Notification::getTypeName(Session::getPluralNumber()),
-                                           $nb);
+               return Notification::getTypeName(Session::getPluralNumber());
 
             case 'Notification' :
                if ($_SESSION['glpishow_count_on_tabs']) {
-                  $nb = countElementsInTable($this->getTable(),
-                                             "notifications_id = '".$item->getID()."'");
+                  return self::createTabEntry(self::getTypeName(Session::getPluralNumber()),
+                                              countElementsInTable($this->getTable(),
+                                                                   "notifications_id
+                                                                        = '".$item->getID()."'"));
                }
-               return self::createTabEntry(self::getTypeName(Session::getPluralNumber()), $nb);
+               return self::getTypeName(Session::getPluralNumber());
          }
       }
       return '';

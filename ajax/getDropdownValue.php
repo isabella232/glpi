@@ -399,8 +399,7 @@ if ($item instanceof CommonTreeDropdown) {
                }
                array_push($datastoadd, array('id'    => $ID,
                                              'text'  => $outputval,
-                                             'level' => $level, 
-                                             'title' => $title));
+                                             'level' => $level));
                $count++;
             }
             $firstitem = false;
@@ -632,8 +631,7 @@ if ($item instanceof CommonTreeDropdown) {
                $outputval = sprintf(__('%1$s (%2$s)'), $outputval, $ID);
             }
             array_push($datastoadd, array('id'    => $ID,
-                                          'text'  => $outputval, 
-                                          'title' => $title));
+                                          'text'  => $outputval));
             $count++;
          }
          if ($multi) {

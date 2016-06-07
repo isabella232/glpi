@@ -708,6 +708,7 @@ CREATE TABLE `glpi_computers_softwarelicenses` (
   `softwarelicenses_id` int(11) NOT NULL DEFAULT '0',
   `is_deleted` tinyint(1) NOT NULL DEFAULT '0',
   `is_dynamic` tinyint(1) NOT NULL DEFAULT '0',
+  `computervirtualmachines_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unicity` (`computers_id`,`softwarelicenses_id`),
   KEY `computers_id` (`computers_id`),
@@ -729,6 +730,8 @@ CREATE TABLE `glpi_computers_softwareversions` (
   `entities_id` int(11) NOT NULL DEFAULT '0',
   `is_deleted` tinyint(1) NOT NULL DEFAULT '0',
   `is_dynamic` tinyint(1) NOT NULL DEFAULT '0',
+  `is_valid` tinyint(1) NOT NULL DEFAULT '1',
+  `computervirtualmachines_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unicity` (`computers_id`,`softwareversions_id`),
   KEY `softwareversions_id` (`softwareversions_id`),
@@ -794,7 +797,7 @@ CREATE TABLE `glpi_configs` (
   UNIQUE KEY `unicity` (`context`,`name`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-INSERT INTO `glpi_configs` VALUES ('1','core','version','0.90.1');
+INSERT INTO `glpi_configs` VALUES ('1','core','version','0.90');
 INSERT INTO `glpi_configs` VALUES ('2','core','show_jobs_at_login','0');
 INSERT INTO `glpi_configs` VALUES ('3','core','cut','250');
 INSERT INTO `glpi_configs` VALUES ('4','core','list_limit','15');
@@ -1492,6 +1495,8 @@ CREATE TABLE `glpi_deviceprocessors` (
   `nbthreads_default` int(11) DEFAULT NULL,
   `entities_id` int(11) NOT NULL DEFAULT '0',
   `is_recursive` tinyint(1) NOT NULL DEFAULT '0',
+  `core_factor` float NOT NULL,
+  `pvu` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `designation` (`designation`),
   KEY `manufacturers_id` (`manufacturers_id`),
@@ -2012,13 +2017,12 @@ CREATE TABLE `glpi_entities` (
   `default_consumables_alarm_threshold` int(11) NOT NULL DEFAULT '-2',
   `delay_send_emails` int(11) NOT NULL DEFAULT '-2',
   `is_notif_enable_default` int(11) NOT NULL DEFAULT '-2',
-  `inquest_duration` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unicity` (`entities_id`,`name`),
   KEY `entities_id` (`entities_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-INSERT INTO `glpi_entities` VALUES ('0','Root entity','-1','Root entity',NULL,'1',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'0',NULL,NULL,NULL,'0','0','0','0','0','0','0','0','0','-1','0','0','-10','1',NULL,'1','0','0',NULL,'0','0','0','0','0','1','-10','0','0','10','10','0','1','0');
+INSERT INTO `glpi_entities` VALUES ('0','Root entity','-1','Root entity',NULL,'1',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'0',NULL,NULL,NULL,'0','0','0','0','0','0','0','0','0','-1','0','0','-10','1',NULL,'1','0','0',NULL,'0','0','0','0','0','1','-10','0','0','10','10','0','1');
 
 ### Dump table glpi_entities_knowbaseitems
 
@@ -6038,6 +6042,16 @@ CREATE TABLE `glpi_softwarecategories` (
 
 INSERT INTO `glpi_softwarecategories` VALUES ('1','FUSION',NULL,'0','FUSION','1',NULL,NULL);
 
+### Dump table glpi_softwarelicensemetrics
+
+CREATE TABLE IF NOT EXISTS `glpi_softwarelicensemetrics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `comment` text COLLATE utf8_unicode_ci,
+  PRIMARY KEY (`id`),
+  KEY `name` (`name`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Table of software metric.' AUTO_INCREMENT=14 ;
+
 ### Dump table glpi_softwarelicenses
 
 DROP TABLE IF EXISTS `glpi_softwarelicenses`;
@@ -6057,6 +6071,10 @@ CREATE TABLE `glpi_softwarelicenses` (
   `comment` text COLLATE utf8_unicode_ci,
   `date_mod` datetime DEFAULT NULL,
   `is_valid` tinyint(1) NOT NULL DEFAULT '1',
+  `core_factor` int(11) DEFAULT NULL,
+  `pvu` int(11) DEFAULT NULL,
+  `softwarelicensemetrics_id` int(11) NOT NULL DEFAULT '0',
+  `softwarelicensemetrics_name` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `name` (`name`),
   KEY `serial` (`serial`),
