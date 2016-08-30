@@ -778,7 +778,6 @@ class CommonDBTM extends CommonGLPI {
 
       // Store input in the object to be available in all sub-method / hook
       $this->input = $input;
-
       if (isset($this->input['add'])) {
          // Input from the interface
          // Save this data to be available if add fail
@@ -827,7 +826,7 @@ class CommonDBTM extends CommonGLPI {
             $this->fields['date_mod'] = $_SESSION["glpi_currenttime"];
          }
 
-         if ($this->checkUnicity(true,$options)) {
+         if ($this->checkUnicity(true,$options)) { 
             if ($this->addToDB()) {
                $this->post_addItem();
                $this->addMessageOnAddAction();

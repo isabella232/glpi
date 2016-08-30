@@ -301,7 +301,6 @@ class Software extends CommonDBTM {
                             'entity'    => $this->fields["entities_id"],
                             'condition' => '`is_itemgroup`'));
       echo "</td></tr>\n";
-
       echo "<tr class='tab_bg_1'>";
       echo "<td>";
       if ((!isset($options['withtemplate']) || ($options['withtemplate'] == 0))

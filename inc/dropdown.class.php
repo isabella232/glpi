@@ -675,7 +675,13 @@ class Dropdown {
       }
       return __('No');
    }
-
+   
+   /**
+    * Get value, if 0, return "N/A"
+   **/
+   static function zeroToNA($value){
+	 return $value ? $value : "N/A";
+   }
 
    /**
     * Get the Device list name the user is allowed to edit

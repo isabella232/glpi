@@ -412,5 +412,47 @@ class ContractCost extends CommonDBChild {
       echo "</div><br>";
    }
 
+    /**
+    * @param $PostFromContractItemForm : _POST from an added contract_item object
+    *
+    * @since version 0.90 - Orange SAM fork
+    *
+    * @return bool : true if correctly added
+    *
+    * @author DELMAS Rémi Orange IST/SUPRA
+    **/
+   function addWhileAddContractItem($PostFromContractItemForm)
+   {
+      global $DB;
+
+      $postContractsId = $PostFromContractItemForm['contracts_id'];
+      $query     = "SELECT `glpi_contracts`.`entities_id` as ContractEntities
+                    FROM `glpi_contracts`
+                    WHERE `glpi_contracts`.`id` = '$postContractsId'
+                    ";
+
+      if($result = $DB->query($query))
+      {
+        if ($data = $result->fetch_assoc())
+        {
+          $name = Contract_Item::getGeneratedName($PostFromContractItemForm);
+          $cost = $PostFromContractItemForm["number_of"]*$PostFromContractItemForm["unit_price"];
+          $tab = Contract_Item::TabForGenerateCostItem($PostFromContractItemForm["contracts_id"],
+                                                   $name,
+                                                   $cost,
+                                                   $data['ContractEntities']);
+          $this->check(-1, CREATE,$_POST);
+          if($this->add($tab))
+          {
+          Event::log($_POST['contracts_id'], "contracts", 4, "financial",
+                 //TRANS: %s is the user login
+                 sprintf(__('%s adds a cost'), $_SESSION["glpiname"]));
+          }
+
+        }
+      }
+
+      
+   }
 }
 ?>

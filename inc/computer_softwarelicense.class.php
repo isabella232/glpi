@@ -455,7 +455,6 @@ class Computer_SoftwareLicense extends CommonDBRelation {
 
       if ($result = $DB->query($query)) {
          if ($data = $DB->fetch_assoc($result)) {
-
             if ($canedit) {
                $rand = mt_rand();
                Html::openMassiveActionsForm('mass'.__CLASS__.$rand);
@@ -694,6 +693,7 @@ class Computer_SoftwareLicense extends CommonDBRelation {
                self::showForLicense($item);
                break;
          }
+		
       }
       return true;
    }

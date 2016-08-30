@@ -132,6 +132,11 @@ class SoftwareVersion extends CommonDBChild {
       echo "<td>";
       Html::autocompletionTextField($this,"name");
       echo "</td></tr>\n";
+	  
+	  echo "<tr class='tab_bg_1'><td>".__('Usage')."</td>";
+      echo "<td>";
+      Html::autocompletionTextField($this,"usage");
+      echo "</td></tr>\n";
 
       echo "<tr class='tab_bg_1'><td>" . __('Operating system') . "</td><td>";
       OperatingSystem::dropdown(array('value' => $this->fields["operatingsystems_id"]));
@@ -173,6 +178,11 @@ class SoftwareVersion extends CommonDBChild {
       $tab[16]['field']    = 'comment';
       $tab[16]['name']     = __('Comments');
       $tab[16]['datatype'] = 'text';
+	  
+	  $tab[999]['table']           = $this->getTable();
+      $tab[999]['field']           = 'usage';
+      $tab[999]['name']            = __('Usage');
+      $tab[999]['datatype']        = 'string';
 
       $tab[31]['table']     = 'glpi_states';
       $tab[31]['field']     = 'completename';

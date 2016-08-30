@@ -43,14 +43,19 @@ Session::checkCentralAccess();
 $contract_item   = new Contract_Item();
 
 if (isset($_POST["add"])) {
-   $contract_item->check(-1, CREATE,$_POST);
-   if ($contract_item->add($_POST)) {
-      Event::log($_POST["contracts_id"], "contracts", 4, "financial",
+	$contract_item->check(-1, CREATE,$_POST);
+	if ($contract_item->add($_POST)) {
+		//if it's a software license, we had to care about unit price
+		// and generate a contractcost item. His value his number_of * unit_price
+		if($_POST["itemtype"]=="SoftwareLicense"){
+			$cc = new ContractCost();
+			$cc->addWhileAddContractItem($_POST);
+		}
+    	Event::log($_POST["contracts_id"], "contracts", 4, "financial",
                  //TRANS: %s is the user login
                  sprintf(__('%s adds a link with an item'), $_SESSION["glpiname"]));
-   }
-   Html::back();
-
+    }
+	Html::back();
 }
 
 Html::displayErrorAndDie("lost");

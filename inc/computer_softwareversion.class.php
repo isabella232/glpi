@@ -112,7 +112,7 @@ class Computer_SoftwareVersion extends CommonDBRelation {
 		 global $DB;
    
 		 $query = "SELECT DISTINCT Oracle, IBM, Nb_licenses, ConstructorName, MetricName, ComputerSoftVersionID, Valid
-				   FROM (SELECT `items_id` as Computer_id,SUM(`core_factor` * `nbthreads`) as Oracle, SUM(`pvu` * `nbthreads`) as IBM
+				     FROM (SELECT `items_id` as Computer_id,SUM(`core_factor` * `nbcores`) as Oracle, SUM(`pvu` * `nbcores`) as IBM
 						 FROM `glpi_items_deviceprocessors`, `glpi_deviceprocessors`
 						 WHERE `items_id` = '$computer_ID'
 						 AND `glpi_items_deviceprocessors`.`deviceprocessors_id` = `glpi_deviceprocessors`.`id`
@@ -121,11 +121,13 @@ class Computer_SoftwareVersion extends CommonDBRelation {
 						(SELECT `computers_id`,`softwarelicenses_id`, count(`softwarelicenses_id`) as Nb_licenses
 						 FROM `glpi_computers_softwarelicenses`
 						 WHERE `softwarelicenses_id`='$license_ID'
+						 AND `computers_id`='$computer_ID'
 						 GROUP BY `softwarelicenses_id`) as CountLicenses,
 
 						(SELECT `glpi_softwarelicenses`.`id` as ID, `glpi_softwarelicensemetrics`.`name` as MetricName
 						 FROM `glpi_softwarelicenses`, `glpi_softwarelicensemetrics`
-						 WHERE `glpi_softwarelicenses`.`softwarelicensemetrics_id`=`glpi_softwarelicensemetrics`.`id`)as LicenceName,
+						 WHERE `glpi_softwarelicenses`.`id` = '$license_ID'
+						 AND `glpi_softwarelicenses`.`softwarelicensemetrics_id`=`glpi_softwarelicensemetrics`.`id`)as LicenceName,
 										 
 						(SELECT `glpi_softwarelicenses`.`id` as ID, `glpi_manufacturers`.`name` as ConstructorName
 						 FROM `glpi_softwarelicenses`, `glpi_softwares`, `glpi_manufacturers`
@@ -134,9 +136,10 @@ class Computer_SoftwareVersion extends CommonDBRelation {
 
 						(SELECT  `glpi_softwarelicenses`.`id` as LicenceID,`glpi_softwareversions`.`id` as LicToVersion,`glpi_computers_softwareversions`.`id` as ComputerSoftVersionID,`glpi_computers_softwareversions`.`is_valid` as Valid
 						 FROM `glpi_softwareversions`,`glpi_softwarelicenses`, `glpi_computers_softwareversions` 
-						 WHERE `glpi_softwarelicenses`.`id`='$license_ID' 
+						 WHERE  `glpi_computers_softwareversions`.`computers_id` = '$computer_ID'
+						 AND `glpi_softwarelicenses`.`id`='$license_ID'
 						 AND `glpi_softwareversions`.`softwares_id`= `glpi_softwarelicenses`.`softwares_id`
-						 AND `glpi_softwareversions`.`softwares_id`= `glpi_computers_softwareversions`.`softwareversions_id`) as LicToVersion,
+						 AND `glpi_softwareversions`.`id`= `glpi_computers_softwareversions`.`softwareversions_id`) as LicToVersion,
 	  
 						 `glpi_computers_softwareversions`
  
@@ -147,17 +150,19 @@ class Computer_SoftwareVersion extends CommonDBRelation {
 		 if($result = $DB->query($query)){
 			 if ($data = $result->fetch_assoc()) {
 				 $metricname = strtoupper($data['MetricName']);
-				 if($metricname = "PROCESSOR"){
+				 if($metricname == "PROCESSOR"){
 					 $softwareVersionID = $data['ComputerSoftVersionID'];
 					 $cname = strtoupper($data['ConstructorName']);
 					 if($cname=='ORACLE'){
 						 $isChangement =(($data['Oracle']<=$data['Nb_licenses'])?1:0)==$data['Valid'];
-						 return array($isChangement,$softwareVersionID);
+						 $data['Nb_licenses_metric']=$data['Oracle'];
+						 return array($isChangement,$softwareVersionID,$data['Oracle']);
 					 }
 					 elseif($cname=='IBM')
 					 {
 						 $isChangement =(($data['IBM']<=$data['Nb_licenses'])?1:0)==$data['Valid'];
-						 return array($isChangement,$softwareVersionID);
+						 $data['nb_licenses_metric']=$data['IBM'];
+						 return array($isChangement,$softwareVersionID,$data['IBM']);
 					 }
 				 }
 			 }
@@ -167,7 +172,7 @@ class Computer_SoftwareVersion extends CommonDBRelation {
 	}
 	
    /**
-    * Update validity indicator of a specific license
+    * Update validity indicator of a specific license - also update number of license needed
     * @param $ID ID of the licence
     *
     * @author DELMAS Rémi
@@ -178,11 +183,16 @@ class Computer_SoftwareVersion extends CommonDBRelation {
 	 $computer_softwareversion = new self();
 	 $valid = self::computeValidityIndicator($computer_ID,$lic_ID);
 	 #if change of validityIndicator value
-     if ($computer_softwareversion->getFromDB($valid[1]) && !($valid[0])) 
+     if ($computer_softwareversion->getFromDB($valid[1]))
 	 {    
-		$newValid = ($computer_softwareversion->fields['is_valid']+1)%2;
 		$computer_softwareversion->update(array('id' => $valid[1],
-												'is_valid' => $newValid));
+												'nb_licenses_metric' => $valid[2]));
+		if (!$valid[0])
+		{			
+			$newValid = ($computer_softwareversion->fields['is_valid']+1)%2;
+			$computer_softwareversion->update(array('id' => $valid[1],
+													'is_valid' => $newValid));
+		}
      }
     }
    
@@ -268,12 +278,15 @@ class Computer_SoftwareVersion extends CommonDBRelation {
                         $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_KO);
                         $ma->addMessage($itemtoadd->getErrorMessage(ERROR_ON_ACTION));
                      }
-                  } else {
+                  } 
+				  else {
                      $ma->itemDone($item->getType(), $id, MassiveAction::ACTION_NORIGHT);
                      $ma->addMessage($itemtoadd->getErrorMessage(ERROR_RIGHT));
                   }
                }
-            } else {
+            } 
+			else {
+			   echo "peer_software_id NOT";
                $ma->itemDone($item->getType(), $ids, MassiveAction::ACTION_KO);
             }
             return;
@@ -787,7 +800,8 @@ class Computer_SoftwareVersion extends CommonDBRelation {
                        `glpi_softwareversions`.`softwares_id`,
                        `glpi_softwareversions`.`name` AS version,
                        `glpi_softwares`.`is_valid` AS softvalid,
-					   `glpi_computers_softwareversions`.`is_valid` AS metricvalid
+					   `glpi_computers_softwareversions`.`is_valid` AS metricvalid,
+						`glpi_computers_softwareversions`.`nb_licenses_metric` AS number_license_needed
                 FROM `glpi_computers_softwareversions`
                 LEFT JOIN `glpi_softwareversions`
                      ON (`glpi_computers_softwareversions`.`softwareversions_id`
@@ -891,7 +905,8 @@ class Computer_SoftwareVersion extends CommonDBRelation {
          }
          $header_end .= "<th>".SoftwareCategory::getTypeName(1)."</th>";
          $header_end .= "<th>".__('Valid license')."</th>";
-		 $header_end .= "<th>".__('Metric license')."</th>";
+		 $header_end .= "<th>".__('Metric control')."</th>";
+		 $header_end .= "<th>".__('How many license needed ?')."</th>";
          $header_end .= "</tr>\n";
          echo $header_begin.$header_top.$header_end;
 
@@ -1061,7 +1076,8 @@ class Computer_SoftwareVersion extends CommonDBRelation {
                        `glpi_softwareversions`.`softwares_id`,
                        `glpi_softwareversions`.`name` AS version,
                        `glpi_softwares`.`is_valid` AS softvalid,
-					   `glpi_computers_softwareversions`.`is_valid` AS metricvalid
+					   `glpi_computers_softwareversions`.`is_valid` AS metricvalid,
+					   `glpi_computers_softwareversions`.`nb_licenses_metric` AS number_license_needed
                 FROM `glpi_computers_softwareversions`
                 LEFT JOIN `glpi_softwareversions`
                      ON (`glpi_computers_softwareversions`.`softwareversions_id`
@@ -1153,7 +1169,7 @@ class Computer_SoftwareVersion extends CommonDBRelation {
          $header_begin  = "<tr>";
          $header_top    = '';
          $header_bottom = '';
-         $header_end    = '';
+         $header_end    = ''; 
          if ($canedit) {
             $header_begin  .= "<th width='10'>";
             $header_top    .= Html::getCheckAllAsCheckbox('mass'.__CLASS__.$rand);
@@ -1167,7 +1183,8 @@ class Computer_SoftwareVersion extends CommonDBRelation {
          }
          $header_end .= "<th>".SoftwareCategory::getTypeName(1)."</th>";
          $header_end .= "<th>".__('Valid license')."</th>";
-		 $header_end .= "<th>".__('Metric license')."</th>";
+		 $header_end .= "<th>".__('Metric control')."</th>";
+		 $header_end .= "<th>".__('How many license needed ?')."</th>";
          $header_end .= "</tr>\n";
          echo $header_begin.$header_top.$header_end;
 
@@ -1239,6 +1256,7 @@ class Computer_SoftwareVersion extends CommonDBRelation {
                 LEFT JOIN `glpi_states`
                      ON (`glpi_states`.`id` = `glpi_softwareversions`.`states_id`)
                 WHERE `glpi_computers_softwarelicenses`.`computers_id` = '$computers_id'
+					  AND `glpi_computers_softwarelicenses`.`computervirtualmachines_id` = '$vm_id'
                       AND `glpi_computers_softwarelicenses`.`is_deleted` = '0'
                       $where";
 
@@ -1396,6 +1414,8 @@ class Computer_SoftwareVersion extends CommonDBRelation {
          echo "</td>";
          echo "<td class='center'>" .Dropdown::getYesNo($data["softvalid"]) . "</td>";
 		 echo "<td class='center'>" .Dropdown::getYesNo($data["metricvalid"]) . "</td>";
+		 echo "<td class='center'>" .Dropdown::zeroToNA($data["number_license_needed"]) . "</td>";
+		 
          echo "</tr>\n";
       }
 

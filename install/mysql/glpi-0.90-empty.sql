@@ -1,4 +1,4 @@
-#GLPI Dump database on 2014-06-18 08:02
+﻿#GLPI Dump database on 2014-06-18 08:02
 
 ### Dump table glpi_alerts
 
@@ -732,8 +732,10 @@ CREATE TABLE `glpi_computers_softwareversions` (
   `is_dynamic` tinyint(1) NOT NULL DEFAULT '0',
   `is_valid` tinyint(1) NOT NULL DEFAULT '1',
   `computervirtualmachines_id` int(11) DEFAULT NULL,
+  `nb_licenses_metric` int(10) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unicity` (`computers_id`,`softwareversions_id`),
+  UNIQUE KEY `computervirtualmachines_id` (`computervirtualmachines_id`),
+  UNIQUE KEY `unicity_vm` (`computers_id`,`softwareversions_id`,`computervirtualmachines_id`),
   KEY `softwareversions_id` (`softwareversions_id`),
   KEY `computers_info` (`entities_id`,`is_template_computer`,`is_deleted_computer`),
   KEY `is_template` (`is_template_computer`),
@@ -1145,6 +1147,8 @@ CREATE TABLE `glpi_contracts_items` (
   `contracts_id` int(11) NOT NULL DEFAULT '0',
   `items_id` int(11) NOT NULL DEFAULT '0',
   `itemtype` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+  `number_of` int(10) unsigned NOT NULL DEFAULT '1' COMMENT 'Pour nombre de license only',
+  `unit_price` int(10) unsigned NOT NULL COMMENT 'unit_price',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unicity` (`contracts_id`,`itemtype`,`items_id`),
   KEY `FK_device` (`items_id`,`itemtype`),
@@ -6044,6 +6048,7 @@ INSERT INTO `glpi_softwarecategories` VALUES ('1','FUSION',NULL,'0','FUSION','1'
 
 ### Dump table glpi_softwarelicensemetrics
 
+DROP TABLE IF EXISTS `glpi_softwarelicensemetrics`;
 CREATE TABLE IF NOT EXISTS `glpi_softwarelicensemetrics` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,

@@ -50,7 +50,6 @@ if (!isset($_GET["contracts_id"])) {
 $cost = new ContractCost();
 if (isset($_POST["add"])) {
    $cost->check(-1, CREATE,$_POST);
-
    if ($newID = $cost->add($_POST)) {
       Event::log($_POST['contracts_id'], "contracts", 4, "financial",
                  //TRANS: %s is the user login

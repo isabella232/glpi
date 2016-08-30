@@ -43,30 +43,30 @@ $options = array('disable_unicity_check' => true);
 
 // From Computer - Software tab (add form)
 if (isset($_POST["add"])) {
-   if (isset($_POST["computers_id"]) && $_POST["computers_id"]
+	if (isset($_POST["computers_id"]) && $_POST["computers_id"]
        && isset($_POST["softwareversions_id"]) && $_POST["softwareversions_id"]) {
 	   
-	  if(isset($_POST["computervirtualmachines_id"]) && $_POST["computervirtualmachines_id"]) {
-		if ($newID = $inst->add(array('computers_id'        => $_POST["computers_id"],
-                                    'softwareversions_id' => $_POST["softwareversions_id"],
-									'computervirtualmachines_id' => $_POST["computervirtualmachines_id"]),$options)){
-									
-			Event::log($_POST["computers_id"], "computers", 5, "inventory",
-                    //TRANS: %s is the user login
-                    sprintf(__('%s installs software'), $_SESSION["glpiname"]));
+		if(isset($_POST["computervirtualmachines_id"]) && $_POST["computervirtualmachines_id"]) {
+			echo htmlspecialchars($_POST["computers_id"]) . " - " . htmlspecialchars($_POST["softwareversions_id"]) . " - " . 
+				 htmlspecialchars($_POST["computervirtualmachines_id"]);
+			
+			if ($newID = $inst->add(array('computers_id'        => $_POST["computers_id"],
+										'softwareversions_id' => $_POST["softwareversions_id"],
+										'computervirtualmachines_id' => $_POST["computervirtualmachines_id"]),$options)){				
+				Event::log($_POST["computers_id"], "computers", 5, "inventory",
+                //TRANS: %s is the user login
+                sprintf(__('%s installs software'), $_SESSION["glpiname"]));
+			}
 		}
-	}
 	
       elseif ($newID = $inst->add(array('computers_id'        => $_POST["computers_id"],
-                                    'softwareversions_id' => $_POST["softwareversions_id"]),$options)) {
-
+                                        'softwareversions_id' => $_POST["softwareversions_id"]),$options)) {
          Event::log($_POST["computers_id"], "computers", 5, "inventory",
                     //TRANS: %s is the user login
                     sprintf(__('%s installs software'), $_SESSION["glpiname"]));
       }
    }
    Html::back();
-
 }
 Html::displayErrorAndDie('Lost');
 ?>

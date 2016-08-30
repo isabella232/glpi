@@ -183,7 +183,7 @@ class Contract extends CommonDBTM {
       echo "</td></tr>";
 
       echo "<tr class='tab_bg_1'>";
-      echo "<td>"._x('phone', 'Number')."</td>";
+      echo "<td>"._x('phone', 'CSI Number')."</td>";
       echo "<td>";
       Html::autocompletionTextField($this, "num");
       echo "</td>";
@@ -206,22 +206,7 @@ class Contract extends CommonDBTM {
                                                $this->fields["duration"], 0, true);
       }
       echo "</td></tr>";
-
-      echo "<tr class='tab_bg_1'>";
-      echo "<td>".__('Notice')."</td><td>";
-      Dropdown::showNumber("notice", array('value' => $this->fields["notice"],
-                                           'min'   => 0,
-                                           'max'   => 120,
-                                           'step'  => 1,
-                                           'toadd' => array(),
-                                           'unit'  => 'month'));
-      if (!empty($this->fields["begin_date"])
-          && ($this->fields["notice"] > 0)) {
-         echo " -> ".Infocom::getWarrantyExpir($this->fields["begin_date"],
-                                               $this->fields["duration"], $this->fields["notice"],
-                                               true);
-      }
-      echo "</td>";
+	  //DELETE NOTICE HERE
       echo "<td>".__('Account number')."</td><td>";
       Html::autocompletionTextField($this, "accounting_number");
       echo "</td></tr>";
@@ -258,13 +243,7 @@ class Contract extends CommonDBTM {
       echo "<tr class='tab_bg_1'><td>".__('Renewal')."</td><td>";
       self::dropdownContractRenewal("renewal", $this->fields["renewal"]);
       echo "</td>";
-      echo "<td>".__('Max number of items')."</td><td>";
-      Dropdown::showNumber("max_links_allowed", array('value' => $this->fields["max_links_allowed"],
-                                                      'min'   => 1,
-                                                      'max'   => 200,
-                                                      'step'  => 1,
-                                                      'toadd' => array(0 => __('Unlimited'))));
-      echo "</td></tr>";
+		// Detene number max of hours
 
 
       if (Entity::getUsedConfig("use_contracts_alert", $this->fields["entities_id"])) {
@@ -281,57 +260,6 @@ class Contract extends CommonDBTM {
       echo "<tr class='tab_bg_1'><td class='top'>".__('Comments')."</td>";
       echo "<td class='center' colspan='3'>";
       echo "<textarea cols='50' rows='4' name='comment' >".$this->fields["comment"]."</textarea>";
-      echo "</td></tr>";
-
-      echo "<tr class='tab_bg_2'><td>".__('Support hours')."</td>";
-      echo "<td colspan='3'>&nbsp;</td></tr>";
-
-      echo "<tr class='tab_bg_1'>";
-      echo "<td>".__('on week')."</td>";
-      echo "<td colspan='3'>";
-      echo "<table width='100%'><tr><td width='20%'>&nbsp;</td>";
-      echo "<td width='20%'>";
-      echo "<span class='small_space'>".__('Start')."</span>";
-      echo "</td><td width='20%'>";
-      Dropdown::showHours("week_begin_hour", array('value' => $this->fields["week_begin_hour"]));
-      echo "</td><td width='20%'>";
-      echo "<span class='small_space'>".__('End')."</span></td><td width='20%'>";
-      Dropdown::showHours("week_end_hour", array('value' => $this->fields["week_end_hour"]));
-      echo "</td></tr></table>";
-      echo "</td></tr>";
-
-      echo "<tr class='tab_bg_1'>";
-      echo "<td>".__('on Saturday')."</td>";
-      echo "<td colspan='3'>";
-      echo "<table width='100%'><tr><td width='20%'>";
-      Dropdown::showYesNo("use_saturday", $this->fields["use_saturday"]);
-      echo "</td><td width='20%'>";
-      echo "<span class='small_space'>".__('Start')."</span>";
-      echo "</td><td width='20%'>";
-      Dropdown::showHours("saturday_begin_hour",
-                          array('value' => $this->fields["saturday_begin_hour"]));
-      echo "</td><td width='20%'>";
-      echo "<span class='small_space'>".__('End')."</span>";
-      echo "</td><td width='20%'>";
-      Dropdown::showHours("saturday_end_hour",
-                          array('value' => $this->fields["saturday_end_hour"]));
-      echo "</td></tr></table>";
-      echo "</td></tr>";
-
-      echo "<tr class='tab_bg_1'>";
-      echo "<td>".__('Sundays and holidays')."</td>";
-      echo "<td colspan='3'>";
-      echo "<table width='100%'><tr><td width='20%'>";
-      Dropdown::showYesNo("use_monday", $this->fields["use_monday"]);
-      echo "</td><td width='20%'>";
-      echo "<span class='small_space'>".__('Start')."</span>";
-      echo "</td><td width='20%'>";
-      Dropdown::showHours("monday_begin_hour", array('value' => $this->fields["monday_begin_hour"]));
-      echo "</td><td width='20%'>";
-      echo "<span class='small_space'>".__('End')."</span>";
-      echo "</td><td width='20%'>";
-      Dropdown::showHours("monday_end_hour", array('value' => $this->fields["monday_end_hour"]));
-      echo "</td></tr></table>";
       echo "</td></tr>";
 
       $this->showFormButtons($options);
@@ -443,16 +371,6 @@ class Contract extends CommonDBTM {
       $tab[134]['massiveaction'] = false;
       $tab[134]['joinparams']    = $joinparams;
 
-      $tab[135]['table']         = 'glpi_contracts';
-      $tab[135]['field']         = 'notice';
-      $tab[135]['name']          = sprintf(__('%1$s - %2$s'), __('Contract'), __('Notice'));
-      $tab[135]['datatype']      = 'number';
-      $tab[135]['max']           = 120;
-      $tab[135]['unit']          = 'month';
-      $tab[135]['forcegroupby']  = true;
-      $tab[135]['massiveaction'] = false;
-      $tab[135]['joinparams']    = $joinparams;
-
       $tab[136]['table']         = 'glpi_contractcosts';
       $tab[136]['field']         = 'totalcost';
       $tab[136]['name']          = sprintf(__('%1$s - %2$s'), __('Contract'), __('Cost'));
@@ -503,7 +421,7 @@ class Contract extends CommonDBTM {
 
       if ($isadmin) {
          $prefix                    = 'Contract_Item'.MassiveAction::CLASS_ACTION_SEPARATOR;
-         $actions[$prefix.'add']    = _x('button', 'Add an item');
+         $actions[$prefix.'add']    = _x('button', 'Add an Item');
          $actions[$prefix.'remove'] = _x('button', 'Remove an item');
       }
 

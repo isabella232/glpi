@@ -147,6 +147,7 @@ class Contract_Item extends CommonDBRelation{
    }
 
 
+
    function getSearchOptions() {
 
       $tab                        = array();
@@ -170,6 +171,17 @@ class Contract_Item extends CommonDBRelation{
       $tab[4]['massiveaction']    = false;
       $tab[4]['datatype']         = 'itemtypename';
       $tab[4]['itemtype_list']    = 'contract_types';
+
+      $tab[5]['table']            = $this->getTable();
+      $tab[5]['field']            = 'number_of';
+      $tab[5]['name']             = __('Number of');
+      $tab[5]['massiveaction']    = false;
+
+      $tab[6]['table']            = $this->getTable();
+      $tab[6]['field']            = 'unit_price';
+      $tab[6]['name']             = __('Unit price');
+      $tab[6]['massiveaction']    = false;
+      $tab[6]['datatype']         = 'number';
 
       return $tab;
    }
@@ -450,11 +462,12 @@ class Contract_Item extends CommonDBRelation{
 
       $header_end .= "<th>".__('Name')."</th>";
       $header_end .= "<th>".__('Entity')."</th>";
-      $header_end .= "<th>"._x('phone', 'Number')."</th>";
+      $header_end .= "<th>"._x('phone', 'CSI Number')."</th>";
       $header_end .= "<th>".__('Contract type')."</th>";
       $header_end .= "<th>".__('Supplier')."</th>";
       $header_end .= "<th>".__('Start date')."</th>";
       $header_end .= "<th>".__('Initial contract period')."</th>";
+      $header_end .= "<th>".__('Number')."</th>";
       $header_end .= "</tr>";
       echo $header_begin.$header_top.$header_end;
 
@@ -469,6 +482,7 @@ class Contract_Item extends CommonDBRelation{
             Session::addToNavigateListItems(__CLASS__,$cID);
             $contracts[] = $cID;
             $assocID     = $data["id"];
+            $number_of   = $data["number_of"];
             $con         = new Contract();
             $con->getFromDB($cID);
             echo "<tr class='tab_bg_1".($con->fields["is_deleted"]?"_2":"")."'>";
@@ -502,6 +516,7 @@ class Contract_Item extends CommonDBRelation{
                                                      $con->fields["duration"], 0, true);
             }
             echo "</td>";
+            echo "<td class='center'>". $number_of ."</td>";
             echo "</tr>";
          }
          echo $header_begin.$header_bottom.$header_end;
@@ -557,7 +572,8 @@ class Contract_Item extends CommonDBRelation{
             $itemtable = getTableForItemType($itemtype);
             $query     = "SELECT `$itemtable`.*,
                                  `glpi_contracts_items`.`id` AS IDD,
-                                 `glpi_entities`.`id` AS entity
+                                 `glpi_entities`.`id` AS entity,
+                                 `glpi_contracts_items`.`number_of` AS number_of 
                           FROM `glpi_contracts_items`,
                                `$itemtable`";
             if ($itemtype != 'Entity') {
@@ -617,7 +633,7 @@ class Contract_Item extends CommonDBRelation{
          echo "<table class='tab_cadre_fixe'>";
          echo "<tr class='tab_bg_2'><th colspan='2'>".__('Add an item')."</th></tr>";
 
-         echo "<tr class='tab_bg_1'><td class='right'>";
+         echo "<tr><td>";
          Dropdown::showSelectItemFromItemtypes(array('itemtypes'
                                                        => $CFG_GLPI["contract_types"],
                                                      'entity_restrict'
@@ -629,7 +645,15 @@ class Contract_Item extends CommonDBRelation{
                                                        => true,
                                                      'used'
                                                        => $used));
-         echo "</td><td class='center'>";
+         echo "</td>";
+         echo "<td class=left>" . __('Number to add : '); 
+         Dropdown::showNumber('number_of',array('value' => 1,
+                                                'min'   => 0,
+                                                'max'   => 100));
+         echo "</td><td>" . __('Unit cost : ');
+         $ct_item = new Contract_Item();
+         Html::autocompletionTextField($ct_item,'unit_price');
+         echo "</td></tr>";
          echo "<input type='submit' name='add' value=\""._sx('button', 'Add')."\" class='submit'>";
          echo "<input type='hidden' name='contracts_id' value='$instID'>";
          echo "</td></tr>";
@@ -662,6 +686,7 @@ class Contract_Item extends CommonDBRelation{
       $header_end .= "<th>".__('Serial number')."</th>";
       $header_end .= "<th>".__('Inventory number')."</th>";
       $header_end .= "<th>".__('Status')."</th>";
+      $header_end .= "<th>".__('Number')."</th>";
       $header_end .= "</tr>";
       echo $header_begin.$header_top.$header_end;
 
@@ -717,6 +742,8 @@ class Contract_Item extends CommonDBRelation{
                } else {
                   echo '&nbsp;';
                }
+               echo "<td class='center'>" . $objdata["number_of"] . "</td>";
+
                echo "</td></tr>";
 
             }
@@ -750,5 +777,64 @@ class Contract_Item extends CommonDBRelation{
       return $specificities;
    }
 
+   /**
+    * @param tab : _POST tab 
+    *
+    * @since version 0.90 - Orange SAM fork
+    *
+    * @return return name of the contractcost item generated when add
+    *
+    * @author DELMAS Rémi Orange IST/SUPRA
+   **/
+    static function getGeneratedName($tab)
+    {
+      global $DB;
+
+      $itemtable = getTableForItemType($tab['itemtype']);
+      $postContractsId = $tab['contracts_id'];
+      $postItemsId = $tab['items_id'];
+
+      $query     = "SELECT DISTINCT *
+                    FROM (SELECT `glpi_contracts`.`name` AS ContractName
+                          FROM `glpi_contracts`
+                          WHERE `glpi_contracts`.`id` = '$postContractsId'
+                          ) as ContractName,
+
+                          (SELECT `$itemtable`.`name` AS ItemName
+                           FROM `$itemtable`, `glpi_contracts_items`
+                           WHERE `glpi_contracts_items`.`items_id` = '$postItemsId'
+                           AND `$itemtable`.`id`= `glpi_contracts_items`.`items_id`) as ItemName";
+
+      if($result = $DB->query($query))
+        if ($data = $result->fetch_assoc())
+          return $data['ContractName']."_".$data['ItemName']."_generatecost";
+      return "ErrorGen";
+    }
+
+
+    /**
+    * @param entitiesId : entites_id
+    *        contractsId : contracts_id
+    *        name : name generate with self::getGeneratedName
+    *        cost : Number of item added to the contract * unit price
+    *        comment : just to tell this item is automaticly generated 
+    *
+    * @since version 0.90 - Orange SAM fork
+    *
+    * @return tab for add from an contractcost item
+    *
+    * @author DELMAS Rémi Orange IST/SUPRA
+   **/
+    static function TabForGenerateCostItem($contractsId,$name,$cost,$entitiesId=0)
+    {
+      $tab["entities_id"]=$entitiesId;
+      $tab["contracts_id"]=$contractsId;
+      $tab["name"]=$name;
+      $tab["cost"]=$cost;
+      $tab["begin_date"]='';
+      $tab["comment"]= "Item automaticly generated while add contract item";
+
+      return $tab;
+    }
 }
 ?>
